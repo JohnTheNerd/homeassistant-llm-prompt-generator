@@ -1,0 +1,7 @@
+requests
+env-canada
+tzlocal
+icalendar
+uvicorn
+fastapi
+numpy

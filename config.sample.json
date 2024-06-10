@@ -1,0 +1,25 @@
+{
+    "embedding_api_key": "sk-apikey",
+    "embedding_base_url": "https://api.openai.com/v1",
+    "embedding_model": "text-embedding-large",
+    "number_of_results": 3,
+    "log_level": 20,
+    "include_examples": true,
+    "update_interval": 3600,
+    "plugins": {
+        "homeassistant": {
+            "access_token": "homeassistant.api.key",
+            "base_url": "http://homeassistant.local:8123"
+        },
+        "weather": {
+            "station_id": "NL/s0000280"
+        },
+        "calendar": {
+            "calendars": [
+                {
+                    "url": "https://example.com/caldav"
+                }
+            ]
+        }
+    }
+}
