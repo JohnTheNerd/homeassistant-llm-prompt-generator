@@ -1,6 +1,7 @@
 import requests
 import json
 from cachetools import cached, TTLCache
+import random
 
 class Adapter:
     def __init__(self, config, utils):
@@ -78,6 +79,7 @@ Devices in area {{AREA_NAME}} (Area ID: {{AREA_ID}}):
 """
 
     def update(self):
+        # TODO add more things like Spotify and entity locations!
         current_initial_values = []
         areas = self.get_areas()
         for area in areas:
@@ -117,23 +119,36 @@ Devices in area {{AREA_NAME}} (Area ID: {{AREA_ID}}):
         shopping_list_response = requests.get(f'{self.base_url}/api/shopping_list',
                                             headers={"Authorization": f"Bearer {self.access_token}"})
 
-        shopping_list_dict = shopping_list_response.json()
-        shopping_list = 'Shopping list contents:\n'
-        for shopping_list_item in shopping_list_dict:
-            shopping_list = shopping_list + f"- {shopping_list_item['name']}\n"
-        
+        shopping_list = shopping_list_response.json()
         return shopping_list
 
     def get_documents(self):
         return self.current_initial_values
 
     def get_llm_prompt_addition(self, document, user_prompt):
-        # TODO add examples!
         examples = []
         llm_prompt = ""
         match document['type']:
             case "shopping_list":
-                llm_prompt = llm_prompt + '\n' + self.get_shopping_list() + '\n'
+                shopping_list = self.get_shopping_list()
+                llm_prompt = llm_prompt + 'Shopping list contents:\n'
+                for shopping_list_item in shopping_list:
+                    llm_prompt = llm_prompt + f"- {shopping_list_item['name']}\n"
+                examples.append(
+                    (
+                        'Add eggs to the shopping list.',
+                        'Eggs were successfully added to the shopping list. $ActionRequired {"service": "shopping_list.add_item", "name": "eggs"}"'
+                    )
+                )
+                sample_shopping_list_item = 'chicken'
+                if shopping_list:
+                    sample_shopping_list_item = random.choice(shopping_list)['name']
+                examples.append(
+                    (
+                        'Remove ' + sample_shopping_list_item + ' from the shopping list.',
+                        sample_shopping_list_item + ' was removed from the shopping list. $ActionRequired {"service": "shopping_list.remove_item", "name": "' + sample_shopping_list_item + '"}'
+                    )
+                )
             case "area":
                 summary_template_with_area = self.summary_template.replace('{{AREA_ID}}', "'" + document['area_id'] + "'")
                 summary = requests.post(f'{self.base_url}/api/template',
@@ -146,6 +161,7 @@ Devices in area {{AREA_NAME}} (Area ID: {{AREA_ID}}):
 {summary.text}
 
                 """
+                # TODO add area and device examples!
         return {
             "prompt": llm_prompt,
             "examples": examples

@@ -15,6 +15,7 @@
             "station_id": "NL/s0000280"
         },
         "calendar": {
+            "example_count": 2,
             "calendars": [
                 {
                     "url": "https://example.com/caldav"

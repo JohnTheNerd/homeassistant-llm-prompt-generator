@@ -71,7 +71,7 @@ class Adapter:
         llm_prompt = "Current weather conditions: " + self.augment_summary(self.ECWeather.conditions)
         for forecast in self.ECWeather.daily_forecasts:
             summary = f"{forecast['text_summary']} Expected temperature: {forecast['temperature']}"
-            llm_prompt = llm_prompt + f"\nWeather forecast for {forecast['period']}: {summary}\n" 
+            llm_prompt = llm_prompt + f"\nWeather forecast for {forecast['period']}: {summary}"
         return {
             "prompt": llm_prompt,
             "examples": examples

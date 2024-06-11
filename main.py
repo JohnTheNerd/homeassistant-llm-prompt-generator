@@ -142,6 +142,7 @@ async def process_prompt(user_prompt, plugins_to_use):
     similarities.sort(key=lambda x: x['similarity'], reverse=True)
     selected_results = similarities[:config['number_of_results']]
     llm_prompt = ""
+    examples = []
     for result in selected_results:
         document_title = result['document']['title']
         similarity = result['similarity']
@@ -152,8 +153,17 @@ async def process_prompt(user_prompt, plugins_to_use):
                 plugin_class = plugin['class']
                 prompt_addition = plugin_class.get_llm_prompt_addition(result['document'], user_prompt)
                 logger.debug(f'prompt_addition: {prompt_addition}')
-                llm_prompt = llm_prompt + prompt_addition['prompt']
-                llm_prompt = llm_prompt + '\n\n'
+                llm_prompt = llm_prompt + prompt_addition['prompt'].strip()
+                llm_prompt = llm_prompt + '\n\n\n'
+                for example in prompt_addition['examples']:
+                    examples.append(example)
+    if 'include_examples' in config and config['include_examples'] == True:
+        if examples:
+            llm_prompt = llm_prompt.strip() + '\n\n\nFind examples below. Reword the answers to fit your personality. Prompts are given as Q: and the example answers are given as A:\n\n'
+            for example in examples:
+                question = example[0]
+                answer = example[1]
+                llm_prompt = f'{llm_prompt}Q:{question}\nA:{answer}\n\n'
     llm_prompt = llm_prompt.strip()
     return llm_prompt
 
