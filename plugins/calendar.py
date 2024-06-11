@@ -10,8 +10,17 @@ class Adapter:
         self.calendar_configuration = config['calendars']
         self.local_tz = tzlocal.get_localzone()
         self.calendars = {}
+        self.documents = []
 
     def update(self):
+        # for now, let's only give one category for the calendar events
+        title = "All calendar events (meetings, appointments, tasks) for the next week."
+        self.documents = [
+            {
+                "title": title,
+                "embedding": self.utils['get_embedding'](title)
+            }
+        ]
         for calendar in self.calendar_configuration:
             caldav_url = calendar.get('url')
             # Set up your credentials
@@ -30,14 +39,7 @@ class Adapter:
             self.calendars[caldav_url] = calendar_object
 
     def get_documents(self):
-        # for now, let's only give one category for the calendar events
-        title = "All calendar events (meetings, appointments, tasks) for the next week."
-        return [
-            {
-                "title": title,
-                "embedding": self.utils['get_embedding'](title)
-            }
-        ]
+        return self.documents
 
     def get_llm_prompt_addition(self, selected_categories, user_prompt):
         llm_prompt = "Calendar events for the next week:\n"
