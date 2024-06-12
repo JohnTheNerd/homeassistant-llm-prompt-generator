@@ -15,7 +15,9 @@ from typing import Optional
 
 app = FastAPI()
 
-with open('config.json') as f:
+config_path = os.environ.get('CONFIG_PATH', 'config.json')
+
+with open(config_path) as f:
     config = json.load(f)
     users_config = config.get('users', {})
 
