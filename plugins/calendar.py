@@ -65,7 +65,10 @@ class Adapter:
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 event_end_formatted = event_end.strftime('%I:%M %p')
-                llm_prompt = llm_prompt + '\n- ' + (f"{component.get('SUMMARY')} at {event_start_formatted} on {event_day_of_week}, {event_end_formatted}")
+                event_summary = component.get('SUMMARY')
+                if not event_summary:
+                    event_summary = component.get('TITLE')
+                llm_prompt = llm_prompt + '\n- ' + (f"{event_summary} at {event_start_formatted} on {event_day_of_week}, {event_end_formatted}")
 
             # we can only reliably create three examples, so let's cap there for now
             # also, why would you want more than 3 calendar examples anyway?
@@ -78,10 +81,15 @@ class Adapter:
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 if event_day_of_week not in days_with_events:
                     days_with_events[event_day_of_week] = []
-                days_with_events[event_day_of_week].append((event.get('SUMMARY'), event_start_formatted))
+                event_summary = event.get('SUMMARY')
+                if not event_summary:
+                    event_summary = event.get('TITLE')
+                days_with_events[event_day_of_week].append((event_summary, event_start_formatted))
 
             days_without_events = []
-            for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]:
+            days_excluding_today = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            days_excluding_today.remove(datetime.now().strftime("%A"))
+            for day in days_excluding_today:
                 if day not in days_with_events:
                     days_without_events.append(day)
 
@@ -111,10 +119,13 @@ class Adapter:
                         )
                     )
 
+            closest_event_summary = closest_event.get('SUMMARY')
+            if not closest_event_summary:
+                closest_event_summary = closest_event.get('TITLE')
             examples.append(
                 (
                     "What's the first thing in my calendar?",
-                    f"It is {closest_event.get('SUMMARY')} at {closest_event_start_formatted} on {closest_event_day_of_week}, {closest_event_start.strftime('%B %d')}"
+                    f"It is {closest_event_summary} at {closest_event_start_formatted} on {closest_event_day_of_week}, {closest_event_start.strftime('%B %d')}"
                     )
                 )
 

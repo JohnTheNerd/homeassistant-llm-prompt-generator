@@ -139,6 +139,9 @@ async def compute_plugin_similarities(prompt_embedding, plugins_to_use):
 async def process_prompt(user_prompt, plugins_to_use):
     prompt_embedding = await get_embedding_async(user_prompt)
     similarities = await compute_plugin_similarities(prompt_embedding, plugins_to_use)
+    logger.debug(f'similarities: {similarities}')
+    for similarity in similarities:
+        logger.debug(f'cosine similarity between "{user_prompt}" and "{similarity["document"]["title"]}" is {similarity["similarity"]}')
     similarities.sort(key=lambda x: x['similarity'], reverse=True)
     selected_results = similarities[:config['number_of_results']]
     llm_prompt = ""
@@ -147,7 +150,7 @@ async def process_prompt(user_prompt, plugins_to_use):
         document_title = result['document']['title']
         similarity = result['similarity']
         plugin_name = result['plugin_name']
-        logger.debug(f'cosine similarity between "{user_prompt}" and "{document_title}" is {similarity}')
+        logger.debug(f'selected "{document_title}" with a cosine similarity of {similarity}')
         for plugin in plugins_to_use:
             if plugin['name'] == plugin_name:
                 plugin_class = plugin['class']
