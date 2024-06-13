@@ -37,8 +37,7 @@ def instantiate_plugins(directory, config):
     utils = {
         "get_embedding": get_embedding,
         "get_embedding_async": get_embedding_async,
-        "compute_similarity": compute_similarity,
-        "compute_similarity_async": compute_similarity_async
+        "compute_similarity": compute_similarity
     }
     if 'plugins' in config:
         for module_name in config['plugins']:
@@ -111,36 +110,26 @@ def compute_similarity(first, second):
     cosine_similarity = dot_product / magnitude_product
     return cosine_similarity
 
-async def compute_similarity_async(prompt_embedding, document_embedding):
-    dot_product = np.dot(prompt_embedding, document_embedding)
-    magnitude_product = np.linalg.norm(prompt_embedding) * np.linalg.norm(document_embedding)
-    cosine_similarity = dot_product / magnitude_product
-    return cosine_similarity
-
-async def compute_plugin_similarities(prompt_embedding, plugins_to_use):
-    tasks = []
+def compute_plugin_similarities(prompt_embedding, plugins_to_use):
+    similarities = []
     for plugin in plugins_to_use:
         plugin_name = plugin['name']
         plugin_class = plugin['class']
         documents = plugin_class.get_documents()
         for document in documents:
             document_embedding = document['embedding']
-            task = asyncio.create_task(compute_similarity_async(prompt_embedding, document_embedding))
-            tasks.append({"task": task, "plugin_name": plugin_name, "document": document})
-    results = await asyncio.gather(*[task["task"] for task in tasks])
-    similarities = []
-    for result, task in zip(results, tasks):
-        similarities.append({
-            "document": task["document"],
-            "similarity": result,
-            "plugin_name": task["plugin_name"]
-        })
+            similarity = compute_similarity(prompt_embedding, document_embedding)
+            similarities.append({
+                "document": document,
+                "similarity": similarity,
+                "plugin_name": plugin_name
+            })
     return similarities
 
 
 async def process_prompt(user_prompt, plugins_to_use):
     prompt_embedding = await get_embedding_async(user_prompt)
-    similarities = await compute_plugin_similarities(prompt_embedding, plugins_to_use)
+    similarities = compute_plugin_similarities(prompt_embedding, plugins_to_use)
     logger.debug(f'similarities: {similarities}')
     for similarity in similarities:
         logger.debug(f'cosine similarity between "{user_prompt}" and "{similarity["document"]["title"]}" is {similarity["similarity"]}')
