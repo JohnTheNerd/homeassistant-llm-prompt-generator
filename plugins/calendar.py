@@ -65,9 +65,9 @@ class Adapter:
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 event_end_formatted = event_end.strftime('%I:%M %p')
-                event_summary = component.get('SUMMARY')
+                event_summary = event.get('SUMMARY')
                 if not event_summary:
-                    event_summary = component.get('TITLE')
+                    event_summary = event.get('TITLE')
                 llm_prompt = llm_prompt + '\n- ' + (f"{event_summary} at {event_start_formatted} on {event_day_of_week}, {event_end_formatted}")
 
             # we can only reliably create three examples, so let's cap there for now
