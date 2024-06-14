@@ -1,5 +1,4 @@
 import aiohttp
-import asyncio
 from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -177,6 +176,19 @@ async def process_prompt_endpoint(
     plugins_to_use = get_plugins(user_name)
     llm_prompt = await process_prompt(user_prompt, plugins_to_use)
     return JSONResponse(content={"prompt": llm_prompt}, media_type="application/json")
+
+@app.post("/update")
+async def update_plugins_endpoint(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer()) if users_config else None,
+):
+    if users_config:
+        for user, user_data in users_config.items():
+            if credentials.scheme.lower() == 'bearer' and credentials.credentials == user_data['token']:
+                break
+        else:
+            raise HTTPException(status_code=401, detail='Unauthorized')
+    update_plugins()
+    return JSONResponse(content={"success": True}, media_type="application/json")
 
 plugins_directory = "plugins"
 plugins = instantiate_plugins(plugins_directory, config)
