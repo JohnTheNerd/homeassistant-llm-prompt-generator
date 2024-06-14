@@ -30,7 +30,7 @@ class Adapter:
             session = requests.Session()
             session.auth = (username, password)
 
-            response = session.get(caldav_url)
+            response = session.get(caldav_url, timeout=10)
 
             calendar_object = icalendar.Calendar.from_ical(response.text)
             self.calendars[caldav_url] = calendar_object

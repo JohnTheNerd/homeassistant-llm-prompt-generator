@@ -64,7 +64,7 @@
     },
     "users": {
         "User1": {
-            "token": "token-goes-here",
+            "token": "User-1-Token-Here",
             "plugins": {
                 "calendar": {
                     "example_count": 2,
@@ -77,7 +77,7 @@
             }
         },
         "User2": {
-            "token": "another-token-goes-here"
+            "token": "User-2-Token-Here"
         }
     }
 }

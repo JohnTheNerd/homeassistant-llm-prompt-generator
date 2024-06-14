@@ -10,13 +10,25 @@ This repository implements RAG (Retrieval Augmented Generation) to optimize the 
 
 - Clone this repository
 
-- Copy `config.sample.json` to `config.json` and update all fields accordingly. Alternatively, set the environment variable `CONFIG_PATH` to where your configuration is located.
+- Copy `config.sample.json` (`config.auth.sample.json` if you would like authentication) to `config.json` and update all fields accordingly. Alternatively, set the environment variable `CONFIG_PATH` to where your configuration is located.
 
     - If you are using a cloud embedding model, beware that the update function re-embeds everything each time, even if the values are static. You may want to set a large `update_interval` or monitor your costs. I'm sure it's not too difficult to cache matching embeddings either. PR's are very welcome!
 
-    - If you would like authentication, use `config.auth.sample.json` instead of `config.json`. You can override plugins per user, as you can see in the example. If authentication is used, all requests are required to have an `Authorization: Bearer <TOKEN>` HTTP header and will otherwise receive a HTTP 401.
-
     - If you do not want in-context learning via examples, simply disable `include_examples`. Keep in mind that the examples are dynamically generated, do not require any additional configuration, and can be quite useful!
+
+- If authentication is used:
+
+    - All requests are required to have an `Authorization: Bearer <TOKEN>` HTTP header and will otherwise receive a HTTP 401.
+
+    - You can override plugins per user, as you can see in the example.
+
+Furthermore, if authentication is enabled, the HomeAssistant side of this setup will also need modifications. In particular, you will need to update `/config/secrets.yaml` to have a new field that looks like this (user names must match what is defined in HomeAssistant):
+
+```
+rag_api_tokens:
+  User1: "User-1-Token-Here"
+  User2: "User-2-Token-Here"
+```
 
 - Run `pip3 install -r requirements.txt` (or build/run the Docker image from the Dockerfile)
 

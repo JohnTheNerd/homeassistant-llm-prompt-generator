@@ -83,7 +83,7 @@ def update_plugins():
 def get_embedding(prompt):
     headers = {"Authorization": f"Bearer {api_key}"}
     data = {"model": config['embedding_model'], "input": prompt}
-    response = requests.post(f"{config['embedding_base_url']}/embeddings", headers=headers, json=data)
+    response = requests.post(f"{config['embedding_base_url']}/embeddings", headers=headers, json=data, timeout=10)
 
     if response.status_code == 200:
         embedding = response.json()["data"]

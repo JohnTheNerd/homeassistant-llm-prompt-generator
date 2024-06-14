@@ -203,7 +203,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                 title_template_edited = title_template_edited.replace('{{IGNORED_ENTITIES}}', json.dumps(self.ignored_entities))
                 title = requests.post(f'{self.base_url}/api/template',
                                         json={"template": title_template_edited},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
                 area['title'] = title
                 # see if we have any summary information at all
                 # if we don't, do not include the area in the initial values
@@ -256,7 +257,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
     def get_areas(self):
         areas_response = requests.post(f'{self.base_url}/api/template',
                                     json={"template": self.areas_template},
-                                    headers={"Authorization": f"Bearer {self.access_token}"})
+                                    headers={"Authorization": f"Bearer {self.access_token}"},
+                                    timeout=10)
 
         # create a JSON from the result
         # remove the trailing comma so the parsing wont fail
@@ -270,7 +272,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
 
     def get_shopping_list(self):
         shopping_list_response = requests.get(f'{self.base_url}/api/shopping_list',
-                                            headers={"Authorization": f"Bearer {self.access_token}"})
+                                            headers={"Authorization": f"Bearer {self.access_token}"}, 
+                                            timeout=10)
 
         shopping_list = shopping_list_response.json()
         return shopping_list
@@ -308,7 +311,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                 summary_template_edited = summary_template_edited.replace('{{IGNORED_ENTITIES}}', json.dumps(self.ignored_entities))
                 summary = requests.post(f'{self.base_url}/api/template',
                                         json={"template": summary_template_edited},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
 
                 llm_prompt = llm_prompt + f"""
 {document['area_name']} (Area ID: {document['area_id']}):
@@ -327,7 +331,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                 area_lights_template_edited = area_lights_template_edited.replace('{{AREA_ID}}', document['area_id'])
                 area_lights_status = requests.post(f'{self.base_url}/api/template',
                         json={"template": area_lights_template_edited},
-                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                        headers={"Authorization": f"Bearer {self.access_token}"},
+                        timeout=10).text
                 examples.append(
                     (
                         f'Are the {document["area_name"]} lights on?',
@@ -344,7 +349,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
             case "laundry":
                 summary = requests.post(f'{self.base_url}/api/template',
                                         json={"template": self.laundry_template},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
 
                 llm_prompt = llm_prompt + f"""
 
@@ -354,7 +360,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
             case "media_player":
                 summary = requests.post(f'{self.base_url}/api/template',
                                         json={"template": self.media_player_template},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
                 if not summary.strip():
                     summary = "No media is playing in the household right now."
 
@@ -366,7 +373,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
             case "person":
                 summary = requests.post(f'{self.base_url}/api/template',
                                         json={"template": self.person_template},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
 
                 llm_prompt = llm_prompt + f"""
 
@@ -376,7 +384,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
             case "color_loop":
                 summary = requests.post(f'{self.base_url}/api/template',
                                         json={"template": self.color_loop_template},
-                                        headers={"Authorization": f"Bearer {self.access_token}"}).text
+                                        headers={"Authorization": f"Bearer {self.access_token}"},
+                                        timeout=10).text
 
                 llm_prompt = llm_prompt + f"""
 
