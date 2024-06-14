@@ -15,6 +15,7 @@ class Adapter:
         self.media_player_enabled = config.get('media_player_enabled', False)
         self.person_enabled = config.get('person_enabled', False)
         self.color_loop_enabled = config.get('color_loop_enabled', False)
+        self.shopping_list = ""
         self.areas_template = """
         {%- for area in areas() %}
         {
@@ -95,6 +96,11 @@ Devices in area {{AREA_NAME}} (Area ID: {{AREA_ID}}):
   {%- if is_state(player.entity_id, 'playing') %}
 {{ state_attr(player.entity_id, 'friendly_name') }} is playing {{ state_attr(player.entity_id, 'media_title') }} by {{ state_attr(player.entity_id, 'media_artist') }}.
   {%- endif %}
+{%- endfor %}"""
+        self.media_player_title_template = """
+States of all media players (songs, movies, shows, videos) in the household
+{%- for player in states.media_player %}
+- {{ state_attr(player.entity_id, 'friendly_name') }}
 {%- endfor %}"""
         self.laundry_template = """
 {%- macro time_diff_in_words(timediff) %}
@@ -213,11 +219,14 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                     current_initial_values.append(area)
         
         if self.shopping_list_enabled:
-            shopping_list_title = 'Shopping list for the entire household'
+            self.shopping_list = self.get_shopping_list()
+            shopping_list_text = 'Shopping list for the entire household:\n'
+            for shopping_list_item in self.shopping_list:
+                shopping_list_text = shopping_list_text + f"- {shopping_list_item['name']}\n"
             current_initial_values.append({
                 "type": "shopping_list",
-                "title": shopping_list_title,
-                "embedding": self.utils['get_embedding'](shopping_list_title)
+                "title": shopping_list_text,
+                "embedding": self.utils['get_embedding'](shopping_list_text)
             })
 
         if self.laundry_enabled:
@@ -229,12 +238,16 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
             })
 
         if self.media_player_enabled:
-            media_player_title = 'States of all media players (songs, movies, shows, videos) in the household'
-            current_initial_values.append({
-                "type": "media_player",
-                "title": media_player_title,
-                "embedding": self.utils['get_embedding'](media_player_title)
-            })
+            summary = requests.post(f'{self.base_url}/api/template',
+                        json={"template": self.media_player_title_template},
+                        headers={"Authorization": f"Bearer {self.access_token}"},
+                        timeout=10).text
+            if summary.strip():
+                current_initial_values.append({
+                    "type": "media_player",
+                    "title": summary.strip(),
+                    "embedding": self.utils['get_embedding'](summary.strip())
+                })
 
         if self.person_enabled:
             person_title = 'All people in HomeAssistant and whether if any of them are home'
@@ -286,9 +299,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
         llm_prompt = ""
         match document['type']:
             case "shopping_list":
-                shopping_list = self.get_shopping_list()
                 llm_prompt = llm_prompt + 'Shopping list contents:\n'
-                for shopping_list_item in shopping_list:
+                for shopping_list_item in self.shopping_list:
                     llm_prompt = llm_prompt + f"- {shopping_list_item['name']}\n"
                 examples.append(
                     (
@@ -297,8 +309,8 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                     )
                 )
                 sample_shopping_list_item = 'chicken'
-                if shopping_list:
-                    sample_shopping_list_item = random.choice(shopping_list)['name']
+                if self.shopping_list:
+                    sample_shopping_list_item = random.choice(self.shopping_list)['name']
                 examples.append(
                     (
                         'Remove ' + sample_shopping_list_item + ' from the shopping list.',

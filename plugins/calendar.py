@@ -11,17 +11,10 @@ class Adapter:
         self.example_count = config.get('example_count', 1)
         self.local_tz = tzlocal.get_localzone()
         self.calendars = {}
+        self.calendar_events = []
         self.documents = []
 
     def update(self):
-        # for now, let's only give one category for the calendar events
-        title = "All calendar events (meetings, appointments, tasks) for the next week."
-        self.documents = [
-            {
-                "title": title,
-                "embedding": self.utils['get_embedding'](title)
-            }
-        ]
         for calendar in self.calendar_configuration:
             caldav_url = calendar.get('url')
             username = calendar.get('username')
@@ -35,12 +28,8 @@ class Adapter:
             calendar_object = icalendar.Calendar.from_ical(response.text)
             self.calendars[caldav_url] = calendar_object
 
-    def get_documents(self):
-        return self.documents
-
-    def get_llm_prompt_addition(self, selected_categories, user_prompt):
-        examples = []
-        calendar_events = []
+        self.calendar_events = []
+        title = "All calendar events (meetings, appointments, tasks) for the next week:"
         for calendar in self.calendars.keys():
             calendar_obj = self.calendars[calendar]
             # localize the date time
@@ -55,27 +44,47 @@ class Adapter:
                     event_start = component.get("DTSTART").dt.astimezone(self.local_tz)
                     event_end = component.get("DTEND").dt.astimezone(self.local_tz)
                     if start <= event_start < end:
-                        calendar_events.append(component)
+                        self.calendar_events.append(component)
 
-        if calendar_events:
-            llm_prompt = "Calendar events for the next week:\n"
-            for event in calendar_events:
+        if self.calendar_events:
+            self.calendar_events.sort(key=lambda x: x.get('DTSTART').dt.astimezone(self.local_tz))
+            llm_prompt = f"{title}\n"
+            for event in self.calendar_events:
                 event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
                 event_end = event.get("DTEND").dt.astimezone(self.local_tz)
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 event_end_formatted = event_end.strftime('%I:%M %p')
+                event_start_date_formatted = event_start.strftime('%B %-d')
                 event_summary = event.get('SUMMARY')
                 if not event_summary:
                     event_summary = event.get('TITLE')
-                llm_prompt = llm_prompt + '\n- ' + (f"{event_summary} at {event_start_formatted} on {event_day_of_week}, {event_end_formatted}")
+                llm_prompt = llm_prompt + '\n- ' + (f"{event_summary} between {event_start_formatted} and {event_end_formatted} on {event_day_of_week}, {event_start_date_formatted}")
 
+        else:
+            llm_prompt = f"{title}\n\nThere are no calendar events in the next week."
+
+        self.llm_prompt = llm_prompt
+        self.documents = [
+            {
+                "title": self.llm_prompt,
+                "embedding": self.utils['get_embedding'](self.llm_prompt)
+            }
+        ]
+
+    def get_documents(self):
+        return self.documents
+
+    def get_llm_prompt_addition(self, selected_categories, user_prompt):
+        examples = []
+        if self.calendar_events:
+            now = datetime.now(self.local_tz)
             # we can only reliably create three examples, so let's cap there for now
             # also, why would you want more than 3 calendar examples anyway?
             number_of_samples = min(self.example_count, 3)
 
             days_with_events = {}
-            for event in calendar_events:
+            for event in self.calendar_events:
                 event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
@@ -88,12 +97,12 @@ class Adapter:
 
             days_without_events = []
             days_excluding_today = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            days_excluding_today.remove(datetime.now().strftime("%A"))
+            days_excluding_today.remove(now.strftime("%A"))
             for day in days_excluding_today:
                 if day not in days_with_events:
                     days_without_events.append(day)
 
-            closest_event = min(calendar_events, key=lambda x: abs((x.get("DTSTART").dt.astimezone(self.local_tz) - now).total_seconds()))
+            closest_event = min(self.calendar_events, key=lambda x: abs((x.get("DTSTART").dt.astimezone(self.local_tz) - now).total_seconds()))
 
             closest_event_start = closest_event.get("DTSTART").dt.astimezone(self.local_tz)
             closest_event_start_formatted = closest_event_start.strftime('%I:%M %p')
@@ -106,7 +115,7 @@ class Adapter:
             examples.append(
                 (
                     f"What's my schedule for {day_with_event}?",
-                    f"You have {schedule} on {day_with_event}, {closest_event_start.strftime('%B %d')}."
+                    f"You have {schedule} on {day_with_event}, {closest_event_start.strftime('%B %-d')}."
                     )
                 )
 
@@ -137,10 +146,8 @@ class Adapter:
                 )
 
             examples = random.sample(examples, number_of_samples)
-        else:
-            llm_prompt = "There are no calendar events in the next week."
 
         return {
-            "prompt": llm_prompt,
+            "prompt": self.llm_prompt,
             "examples": examples
         }
