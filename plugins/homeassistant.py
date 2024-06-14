@@ -299,9 +299,13 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
         llm_prompt = ""
         match document['type']:
             case "shopping_list":
-                llm_prompt = llm_prompt + 'Shopping list contents:\n'
-                for shopping_list_item in self.shopping_list:
-                    llm_prompt = llm_prompt + f"- {shopping_list_item['name']}\n"
+                if self.shopping_list:
+                    llm_prompt = llm_prompt + 'Shopping list contents:\n'
+                    for shopping_list_item in self.shopping_list:
+                        llm_prompt = llm_prompt + f"- {shopping_list_item['name']}\n"
+                    llm_prompt = llm_prompt + '\n Do not add anything to the shopping list if it is already there!'
+                else:
+                    llm_prompt = "The shopping list is currently empty."
                 examples.append(
                     (
                         'Add eggs to the shopping list.',
@@ -315,6 +319,12 @@ Party mode is disabled. Run service named script.enable_party_mode to enable.
                     (
                         'Remove ' + sample_shopping_list_item + ' from the shopping list.',
                         sample_shopping_list_item + ' was removed from the shopping list. $ActionRequired {"service": "shopping_list.remove_item", "name": "' + sample_shopping_list_item + '"}'
+                    )
+                )
+                examples.append(
+                    (
+                        'Add ' + sample_shopping_list_item + ' to the shopping list.',
+                        sample_shopping_list_item + ' is already in the shopping list! $NoActionRequired'
                     )
                 )
             case "area":
