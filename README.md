@@ -53,6 +53,8 @@ All fields in the sample configuration are required. This plugin has several fun
 
 - Person: Defines every person and whether they are home. No examples as it is very self-explanatory.
 
+- Music Assistant: Provides a few examples to use the mass.play_media service. Does not augment the LLM prompt itself.
+
 - Laundry and Color Loop: Currently extremely custom and is mostly meant for me to use. Feel free to use them if they help you, but it's likely that you will need to change the templates.
 
 `ignored_entities` ignores the entities given in the list. It is a substring search. If you want all entities to be part of the LLM prompt, simply make it an empty list.

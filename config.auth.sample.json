@@ -48,7 +48,8 @@
             "laundry_enabled": false,
             "media_player_enabled": true,
             "person_enabled": true,
-            "color_loop_enabled": false
+            "color_loop_enabled": false,
+            "music_assistant_enabled": true
         },
         "weather": {
             "station_id": "NL/s0000280"
