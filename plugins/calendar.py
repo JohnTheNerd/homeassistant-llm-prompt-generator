@@ -44,13 +44,13 @@ class Adapter:
                     event_start = component.get("DTSTART").dt
                     if isinstance(event_start, datetime.date):
                         event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
-                    if hasattr(component.get("DTSTART").dt, 'astimezone'):
-                        event_start = component.get("DTSTART").dt.astimezone(self.local_tz)
+                    if hasattr(event_start, 'astimezone'):
+                        event_start = event_start.astimezone(self.local_tz)
                     event_end = component.get("DTEND").dt
                     if isinstance(event_end, datetime.date):
                         event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
-                    if hasattr(component.get("DTEND").dt, 'astimezone'):
-                        event_end = component.get("DTEND").dt.astimezone(self.local_tz)
+                    if hasattr(event_end, 'astimezone'):
+                        event_end = event_end.astimezone(self.local_tz)
                     if start <= event_start < end:
                         self.calendar_events.append(component)
 
@@ -61,13 +61,13 @@ class Adapter:
                 event_start = event.get("DTSTART").dt
                 if isinstance(event_start, datetime.date):
                     event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
-                if hasattr(event.get("DTSTART").dt, 'astimezone'):
-                    event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
+                if hasattr(event_start, 'astimezone'):
+                    event_start = event_start.astimezone(self.local_tz)
                 event_end = event.get("DTEND").dt
                 if isinstance(event_end, datetime.date):
                     event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
-                if hasattr(event.get("DTEND").dt, 'astimezone'):
-                    event_end = event.get("DTEND").dt.astimezone(self.local_tz)
+                if hasattr(event_end, 'astimezone'):
+                    event_end = event_end.astimezone(self.local_tz)
 
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
@@ -94,6 +94,8 @@ class Adapter:
         event_start = event.get("DTSTART").dt
         if isinstance(event_start, datetime.date):
             event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+        if hasattr(event_start, 'astimezone'):
+            event_start = event_start.astimezone(self.local_tz)
         return abs((event_start - utc_now).total_seconds())
 
     def get_documents(self):
@@ -112,8 +114,8 @@ class Adapter:
                 event_start = event.get("DTSTART").dt
                 if isinstance(event_start, datetime.date):
                     event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
-                if hasattr(event.get("DTSTART").dt, 'astimezone'):
-                    event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
+                if hasattr(event_start, 'astimezone'):
+                    event_start = event_start.astimezone(self.local_tz)
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 if event_day_of_week not in days_with_events:
@@ -136,8 +138,8 @@ class Adapter:
             closest_event_start = closest_event.get("DTSTART").dt
             if isinstance(closest_event_start, datetime.date):
                 closest_event_start = datetime.datetime.combine(closest_event_start, datetime.time(0, tzinfo=self.local_tz))
-            if hasattr(closest_event.get("DTSTART").dt, 'astimezone'):
-                closest_event_start = closest_event.get("DTSTART").dt.astimezone(self.local_tz)
+            if hasattr(closest_event_start, 'astimezone'):
+                closest_event_start = closest_event_start.astimezone(self.local_tz)
 
             closest_event_start_formatted = closest_event_start.strftime('%I:%M %p')
             closest_event_day_of_week = closest_event_start.strftime("%A")
