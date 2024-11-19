@@ -1,6 +1,6 @@
 import icalendar
 import requests
-from datetime import datetime, timedelta
+import datetime
 import random
 import tzlocal
 
@@ -33,25 +33,42 @@ class Adapter:
         for calendar in self.calendars.keys():
             calendar_obj = self.calendars[calendar]
             # localize the date time
-            now = datetime.now(self.local_tz)
+            now = datetime.datetime.now(self.local_tz)
 
             # for now, let's just work with the next week of events
             start = now
-            end = now + timedelta(days=7)
+            end = now + datetime.timedelta(days=7)
 
             for component in calendar_obj.walk():
                 if component.name == "VEVENT":
-                    event_start = component.get("DTSTART").dt.astimezone(self.local_tz)
-                    event_end = component.get("DTEND").dt.astimezone(self.local_tz)
+                    event_start = component.get("DTSTART").dt
+                    if isinstance(event_start, datetime.date):
+                        event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+                    if hasattr(component.get("DTSTART").dt, 'astimezone'):
+                        event_start = component.get("DTSTART").dt.astimezone(self.local_tz)
+                    event_end = component.get("DTEND").dt
+                    if isinstance(event_end, datetime.date):
+                        event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
+                    if hasattr(component.get("DTEND").dt, 'astimezone'):
+                        event_end = component.get("DTEND").dt.astimezone(self.local_tz)
                     if start <= event_start < end:
                         self.calendar_events.append(component)
 
         if self.calendar_events:
-            self.calendar_events.sort(key=lambda x: x.get('DTSTART').dt.astimezone(self.local_tz))
+            self.calendar_events.sort(key=lambda x: x.get('DTSTART').dt)
             llm_prompt = f"{title}\n"
             for event in self.calendar_events:
-                event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
-                event_end = event.get("DTEND").dt.astimezone(self.local_tz)
+                event_start = event.get("DTSTART").dt
+                if isinstance(event_start, datetime.date):
+                    event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+                if hasattr(event.get("DTSTART").dt, 'astimezone'):
+                    event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
+                event_end = event.get("DTEND").dt
+                if isinstance(event_end, datetime.date):
+                    event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
+                if hasattr(event.get("DTEND").dt, 'astimezone'):
+                    event_end = event.get("DTEND").dt.astimezone(self.local_tz)
+
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 event_end_formatted = event_end.strftime('%I:%M %p')
@@ -72,20 +89,31 @@ class Adapter:
             }
         ]
 
+    def get_event_key(self, event):
+        utc_now = datetime.datetime.now()
+        event_start = event.get("DTSTART").dt
+        if isinstance(event_start, datetime.date):
+            event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+        return abs((event_start - utc_now).total_seconds())
+
     def get_documents(self):
         return self.documents
 
     def get_llm_prompt_addition(self, selected_categories, user_prompt):
         examples = []
         if self.calendar_events:
-            now = datetime.now(self.local_tz)
+            now = datetime.datetime.now(self.local_tz)
             # we can only reliably create three examples, so let's cap there for now
             # also, why would you want more than 3 calendar examples anyway?
             number_of_samples = min(self.example_count, 3)
 
             days_with_events = {}
             for event in self.calendar_events:
-                event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
+                event_start = event.get("DTSTART").dt
+                if isinstance(event_start, datetime.date):
+                    event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+                if hasattr(event.get("DTSTART").dt, 'astimezone'):
+                    event_start = event.get("DTSTART").dt.astimezone(self.local_tz)
                 event_day_of_week = event_start.strftime("%A")
                 event_start_formatted = event_start.strftime('%I:%M %p')
                 if event_day_of_week not in days_with_events:
@@ -102,9 +130,15 @@ class Adapter:
                 if day not in days_with_events:
                     days_without_events.append(day)
 
-            closest_event = min(self.calendar_events, key=lambda x: abs((x.get("DTSTART").dt.astimezone(self.local_tz) - now).total_seconds()))
+            utc_now = datetime.datetime.now()
+            closest_event = min(self.calendar_events, key=self.get_event_key)
 
-            closest_event_start = closest_event.get("DTSTART").dt.astimezone(self.local_tz)
+            closest_event_start = closest_event.get("DTSTART").dt
+            if isinstance(closest_event_start, datetime.date):
+                closest_event_start = datetime.datetime.combine(closest_event_start, datetime.time(0, tzinfo=self.local_tz))
+            if hasattr(closest_event.get("DTSTART").dt, 'astimezone'):
+                closest_event_start = closest_event.get("DTSTART").dt.astimezone(self.local_tz)
+
             closest_event_start_formatted = closest_event_start.strftime('%I:%M %p')
             closest_event_day_of_week = closest_event_start.strftime("%A")
 
