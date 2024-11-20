@@ -93,9 +93,7 @@ class Adapter:
         utc_now = datetime.datetime.now()
         event_start = event.get("DTSTART").dt
         if isinstance(event_start, datetime.date):
-            event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
-        if hasattr(event_start, 'astimezone'):
-            event_start = event_start.astimezone(self.local_tz)
+            event_start = datetime.datetime.combine(event_start, datetime.time(0))
         return abs((event_start - utc_now).total_seconds())
 
     def get_documents(self):
@@ -132,7 +130,6 @@ class Adapter:
                 if day not in days_with_events:
                     days_without_events.append(day)
 
-            utc_now = datetime.datetime.now()
             closest_event = min(self.calendar_events, key=self.get_event_key)
 
             closest_event_start = closest_event.get("DTSTART").dt
