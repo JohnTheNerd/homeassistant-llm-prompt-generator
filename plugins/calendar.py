@@ -3,6 +3,7 @@ import requests
 import datetime
 import random
 import tzlocal
+import dateutil.rrule
 
 class Adapter:
     def __init__(self, config, utils):
@@ -19,52 +20,113 @@ class Adapter:
             caldav_url = calendar.get('url')
             username = calendar.get('username')
             password = calendar.get('password')
-
             session = requests.Session()
             session.auth = (username, password)
-
             response = session.get(caldav_url, timeout=10)
-
             calendar_object = icalendar.Calendar.from_ical(response.text)
             self.calendars[caldav_url] = calendar_object
-
         self.calendar_events = []
         title = "All calendar events (meetings, appointments, tasks) for the next week:"
         for calendar in self.calendars.keys():
             calendar_obj = self.calendars[calendar]
             # localize the date time
             now = datetime.datetime.now(self.local_tz)
-
             # for now, let's just work with the next week of events
             start = now
             end = now + datetime.timedelta(days=7)
-
             for component in calendar_obj.walk():
                 if component.name == "VEVENT":
                     event_start = component.get("DTSTART").dt
-                    if isinstance(event_start, datetime.date):
+                    if isinstance(event_start, datetime.date) and not isinstance(event_start, datetime.datetime):
                         event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
                     if hasattr(event_start, 'astimezone'):
                         event_start = event_start.astimezone(self.local_tz)
                     event_end = component.get("DTEND").dt
-                    if isinstance(event_end, datetime.date):
+                    if isinstance(event_end, datetime.date) and not isinstance(event_end, datetime.datetime):
                         event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
                     if hasattr(event_end, 'astimezone'):
                         event_end = event_end.astimezone(self.local_tz)
                     if start <= event_start < end:
                         self.calendar_events.append(component)
+                    # handle recurring events
+                    rrule_attr = component.get("RRULE")
+                    if rrule_attr:
+                        rrule_string = rrule_attr.to_ical().decode()
+                        params = rrule_string.split(";")
+                        freq = None
+                        interval = 1
+                        byweekday = None
+                        until = None
+                        bymonthday = None
+                        bymonth = None
+                        for param in params:
+                            if param.startswith("FREQ="):
+                                freq = param.split("=")[1]
+                            elif param.startswith("INTERVAL="):
+                                interval = int(param.split("=")[1])
+                            elif param.startswith("BYDAY="):
+                                byweekday = param.split("=")[1]
+                            elif param.startswith("UNTIL="):
+                                until = param.split("=")[1]
+                            elif param.startswith("BYMONTHDAY="):
+                                bymonthday = int(param.split("=")[1])
+                            elif param.startswith("BYMONTH="):
+                                bymonth = int(param.split("=")[1])
+                        if until:
+                            until_date = datetime.datetime.strptime(until, "%Y%m%dT%H%M%SZ").date()
+                            until_date = datetime.datetime.combine(until_date, datetime.time(0, tzinfo=self.local_tz))
+                        else:
+                            until_date = datetime.datetime.now(tzinfo=self.local_tz) + datetime.timedelta(days=400)
+                        if freq == "DAILY":
+                            rrule_set = dateutil.rrule.rrule(dateutil.rrule.DAILY, interval=interval, dtstart=event_start, until=until_date)
+                        elif freq == "WEEKLY":
+                            weekday_mapping = {
+                                'MO': dateutil.rrule.MO,
+                                'TU': dateutil.rrule.TU,
+                                'WE': dateutil.rrule.WE,
+                                'TH': dateutil.rrule.TH,
+                                'FR': dateutil.rrule.FR,
+                                'SA': dateutil.rrule.SA,
+                                'SU': dateutil.rrule.SU,
+                            }
+                            weekdays = []
+                            for weekday_str in byweekday.split(','):
+                                weekdays.append(weekday_mapping[weekday_str.upper()])
+                            rrule_set = dateutil.rrule.rrule(dateutil.rrule.WEEKLY, interval=interval, dtstart=event_start, byweekday=weekdays, until=until_date)
+                        elif freq == "MONTHLY":
+                            rrule_set = dateutil.rrule.rrule(dateutil.rrule.MONTHLY, interval=interval, dtstart=event_start, until=until_date)
+                        elif freq == "YEARLY":
+                            if bymonthday and bymonth:
+                                rrule_set = dateutil.rrule.rrule(dateutil.rrule.YEARLY, interval=interval, dtstart=event_start, bymonth=bymonth, bymonthday=bymonthday, until=until_date)
+                            elif bymonthday:
+                                rrule_set = dateutil.rrule.rrule(dateutil.rrule.YEARLY, interval=interval, dtstart=event_start, bymonthday=bymonthday, until=until_date)
+                            elif bymonth:
+                                rrule_set = dateutil.rrule.rrule(dateutil.rrule.YEARLY, interval=interval, dtstart=event_start, bymonth=bymonth, until=until_date)
+                            else:
+                                rrule_set = dateutil.rrule.rrule(dateutil.rrule.YEARLY, interval=interval, dtstart=event_start, until=until_date)
+                        else:
+                            print(f"Unsupported frequency for rule {rrule_string}")
+                            continue
+                        for recurring_event_start in rrule_set.between(before=end, after=datetime.datetime.now(self.local_tz), inc=True):
+                            # create a new VEVENT component for the recurring event
+                            recurring_event = icalendar.Event()
+                            recurring_event.add("DTSTART", recurring_event_start)
+                            recurring_event.add("DTEND", recurring_event_start + (event_end - event_start))
+                            recurring_event.add("SUMMARY", component.get("SUMMARY"))
+                            recurring_event.add("TITLE", component.get("TITLE"))
+                            self.calendar_events.append(recurring_event)
 
         if self.calendar_events:
             self.calendar_events.sort(key=lambda x: x.get('DTSTART').dt)
             llm_prompt = f"{title}\n"
             for event in self.calendar_events:
                 event_start = event.get("DTSTART").dt
-                if isinstance(event_start, datetime.date):
+                if isinstance(event_start, datetime.date) and not isinstance(event_start, datetime.datetime):
                     event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
                 if hasattr(event_start, 'astimezone'):
                     event_start = event_start.astimezone(self.local_tz)
                 event_end = event.get("DTEND").dt
-                if isinstance(event_end, datetime.date):
+                if isinstance(event_end, datetime.date) and not isinstance(event_end, datetime.datetime):
                     event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
                 if hasattr(event_end, 'astimezone'):
                     event_end = event_end.astimezone(self.local_tz)
@@ -90,11 +152,11 @@ class Adapter:
         ]
 
     def get_event_key(self, event):
-        utc_now = datetime.datetime.now()
         event_start = event.get("DTSTART").dt
-        if isinstance(event_start, datetime.date):
+        now = datetime.datetime.now(event_start.tzinfo)
+        if isinstance(event_start, datetime.date) and not isinstance(event_start, datetime.datetime):
             event_start = datetime.datetime.combine(event_start, datetime.time(0))
-        return abs((event_start - utc_now).total_seconds())
+        return abs((event_start - now).total_seconds())
 
     def get_documents(self):
         return self.documents
@@ -110,7 +172,7 @@ class Adapter:
             days_with_events = {}
             for event in self.calendar_events:
                 event_start = event.get("DTSTART").dt
-                if isinstance(event_start, datetime.date):
+                if isinstance(event_start, datetime.date) and not isinstance(event_start, datetime.datetime):
                     event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
                 if hasattr(event_start, 'astimezone'):
                     event_start = event_start.astimezone(self.local_tz)
@@ -133,7 +195,7 @@ class Adapter:
             closest_event = min(self.calendar_events, key=self.get_event_key)
 
             closest_event_start = closest_event.get("DTSTART").dt
-            if isinstance(closest_event_start, datetime.date):
+            if isinstance(closest_event_start, datetime.date) and not isinstance(closest_event_start, datetime.datetime):
                 closest_event_start = datetime.datetime.combine(closest_event_start, datetime.time(0, tzinfo=self.local_tz))
             if hasattr(closest_event_start, 'astimezone'):
                 closest_event_start = closest_event_start.astimezone(self.local_tz)

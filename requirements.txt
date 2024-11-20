@@ -2,6 +2,7 @@ requests
 env-canada
 tzlocal
 icalendar
+python-dateutil
 uvicorn
 fastapi
 numpy
