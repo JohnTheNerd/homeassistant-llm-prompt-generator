@@ -76,7 +76,7 @@ class Adapter:
                             until_date = datetime.datetime.strptime(until, "%Y%m%dT%H%M%SZ").date()
                             until_date = datetime.datetime.combine(until_date, datetime.time(0, tzinfo=self.local_tz))
                         else:
-                            until_date = datetime.datetime.now(tzinfo=self.local_tz) + datetime.timedelta(days=400)
+                            until_date = datetime.datetime.now(self.local_tz) + datetime.timedelta(days=400)
                         if freq == "DAILY":
                             rrule_set = dateutil.rrule.rrule(dateutil.rrule.DAILY, interval=interval, dtstart=event_start, until=until_date)
                         elif freq == "WEEKLY":
@@ -90,8 +90,15 @@ class Adapter:
                                 'SU': dateutil.rrule.SU,
                             }
                             weekdays = []
-                            for weekday_str in byweekday.split(','):
-                                weekdays.append(weekday_mapping[weekday_str.upper()])
+                            if byweekday:
+                                for weekday_str in byweekday.split(','):
+                                    weekdays.append(weekday_mapping[weekday_str.upper()])
+                            else:
+                                # we have no choice but to assume it's the day of week in the current occurrence
+                                weekday_of_event = event_start.weekday()
+                                recurrence_weekday = list(weekday_mapping.values())[weekday_of_event]
+                                weekdays.append(recurrence_weekday)
+
                             rrule_set = dateutil.rrule.rrule(dateutil.rrule.WEEKLY, interval=interval, dtstart=event_start, byweekday=weekdays, until=until_date)
                         elif freq == "MONTHLY":
                             rrule_set = dateutil.rrule.rrule(dateutil.rrule.MONTHLY, interval=interval, dtstart=event_start, until=until_date)
