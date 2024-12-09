@@ -124,6 +124,17 @@ class Adapter:
                             self.calendar_events.append(recurring_event)
 
         if self.calendar_events:
+            for event in self.calendar_events:
+                event_start = event.get('DTSTART').dt
+                if isinstance(event_start, datetime.date) and not isinstance(event_start, datetime.datetime):
+                    event_start = datetime.datetime.combine(event_start, datetime.time(0, tzinfo=self.local_tz))
+                    event['DTSTART'].dt = event_start
+                event_end = event.get('DTEND').dt
+                # all day events should go until 00:00 the next day
+                if isinstance(event_end, datetime.date) and not isinstance(event_end, datetime.datetime):
+                    event_end = datetime.datetime.combine(event_end, datetime.time(0, tzinfo=self.local_tz))
+                    event_end = event_end + datetime.timedelta(days=1)
+                    event['DTEND'].dt = event_end
             self.calendar_events.sort(key=lambda x: x.get('DTSTART').dt)
             llm_prompt = f"{title}\n"
             for event in self.calendar_events:
