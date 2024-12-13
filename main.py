@@ -72,12 +72,19 @@ def update_plugins_thread():
         update_plugins()
 
 def update_plugins():
-        for plugin in plugins:
+    for plugin in plugins:
+        try:
             plugin["class"].update()
+        except Exception as e:
+            logger.error(f"Error updating plugin {plugin['name']}: {str(e)}")
+
         if plugins_by_user:
             for user_name in plugins_by_user:
                 for plugin in plugins_by_user[user_name]:
-                    plugin["class"].update()
+                    try:
+                        plugin["class"].update()
+                    except Exception as e:
+                        logger.error(f"Error updating plugin {plugin['name']} for user {user_name}: {str(e)}")
 
 def get_embedding(prompt):
     headers = {"Authorization": f"Bearer {api_key}"}
