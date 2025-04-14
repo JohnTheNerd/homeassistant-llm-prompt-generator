@@ -1,5 +1,7 @@
 # HomeAssistant LLM Prompt Generator
 
+**I have rewritten my entire RAG code into a fork of openai_conversation instead of using extended_openai_conversation, which can be found [here](https://github.com/JohnTheNerd/rag_openai_conversation). It no longer needs a RAG API. I will no longer be maintaining this repository.**
+
 # Introduction
 
 The current de-facto method of using LLMs to automate a smart home involves sending *the entire smart home state* as part of the context. This is insanely slow for local LLM's (especially if you are running without GPUs, as prefill times tend to be llama.cpp's bottleneck), and can get expensive over time for cloud LLM API's. However, in practice, most of this state is not even relevant to what you just asked your assistant!
